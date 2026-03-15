@@ -42,6 +42,16 @@ export default function CounterScreen({ route, navigation }) {
   // Tracks whether the entire playlist has been completed
   const [complete, setComplete] = useState(false);
 
+   // Stores scroll measurements for Arabic text
+const [arabicScrollData, setArabicScrollData] = useState({
+  offset: 0, visible: 0, total: 0
+});
+
+// Stores scroll measurements for translation text
+const [translationScrollData, setTranslationScrollData] = useState({
+  offset: 0, visible: 0, total: 0
+});
+
   // Convenience variables derived from state
   const currentDua = allDuas[currentIndex];
 
@@ -92,6 +102,38 @@ export default function CounterScreen({ route, navigation }) {
       setCount(0);
     }
   };
+
+/**
+ * calculateIndicator — computes scroll indicator size and position
+ * @param {object} scrollData - offset, visible and total measurements
+ * @param {number} trackHeight - total height of the indicator track
+ * @returns {object} - height and marginTop for the indicator, 
+ *                     and whether to show it
+ */
+const calculateIndicator = (scrollData, trackHeight) => {
+  const { offset, visible, total } = scrollData;
+
+  // NOTE: Only show indicator if content is taller than container
+  // Like only showing an elevator if building has more than 1 floor
+  const needsScroll = total > visible;
+  if (!needsScroll) return { show: false, height: 0, top: 0 };
+
+  // Indicator height proportional to visible/total ratio
+  const indicatorHeight = (visible / total) * trackHeight;
+
+  // Scrollable distance = total content - visible window
+  const scrollableDistance = total - visible;
+
+  // Position moves proportionally as user scrolls
+  const indicatorTop = (offset / scrollableDistance) 
+    * (trackHeight - indicatorHeight);
+
+  return {
+    show: true,
+    height: indicatorHeight,
+    top: indicatorTop,
+  };
+};
 
   // ─── Completion Screen ───────────────────────────────────────────
   if (complete) {
@@ -178,29 +220,103 @@ export default function CounterScreen({ route, navigation }) {
         {currentDua.sectionTitle}
       </Text>
 
-      {/* Arabic text — scrollable in case it's long */}
-      <ScrollView style={{ maxHeight: 200, marginBottom: 24 }}>
-        <Text style={{
-          fontSize: theme.typography.arabic,
-          color: theme.colors.text,
-          textAlign: 'right',
-          lineHeight: 44,
-        }}>
-          {currentDua.arabic}
-        </Text>
-      </ScrollView>
+      {/* Arabic text container with smart scroll indicator */}
+<View style={{
+  maxHeight: 200,
+  marginBottom: 24,
+  flexDirection: 'row',
+}}>
+  <ScrollView
+    showsVerticalScrollIndicator={false}
+    style={{ flex: 1 }}
+    onScroll={(e) => {
+      const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
+      setArabicScrollData({
+        offset: contentOffset.y,
+        total: contentSize.height,
+        visible: layoutMeasurement.height,
+      });
+    }}
+    scrollEventThrottle={16}>
+    <Text style={{
+      fontSize: theme.typography.arabic,
+      color: theme.colors.text,
+      textAlign: 'right',
+      lineHeight: 44,
+      paddingRight: 8,
+    }}>
+      {currentDua.arabic}
+    </Text>
+  </ScrollView>
 
-      {/* Translation — capped at 3 lines to preserve layout */}
-      <Text
-        numberOfLines={3}
-        style={{
-          fontSize: theme.typography.body - 2,
-          color: theme.colors.subtle,
-          lineHeight: 22,
-          marginBottom: 32,
-        }}>
-        {currentDua.translation}
-      </Text>
+  {/* Smart indicator track — only visible when scrolling needed */}
+  {calculateIndicator(arabicScrollData, 200).show && (
+    <View style={{
+      width: 3,
+      height: 200,
+      backgroundColor: theme.colors.border,
+      borderRadius: 3,
+      marginLeft: 4,
+    }}>
+      <View style={{
+        width: 3,
+        backgroundColor: theme.colors.accent,
+        borderRadius: 3,
+        // NOTE: height and position calculated dynamically
+        height: calculateIndicator(arabicScrollData, 200).height,
+        marginTop: calculateIndicator(arabicScrollData, 200).top,
+      }}/>
+    </View>
+  )}
+</View>
+
+   {/* Translation container with smart scroll indicator */}
+<View style={{
+  maxHeight: 80,
+  marginBottom: 32,
+  flexDirection: 'row',
+}}>
+  <ScrollView
+    showsVerticalScrollIndicator={false}
+    style={{ flex: 1 }}
+    onScroll={(e) => {
+      const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
+      setTranslationScrollData({
+        offset: contentOffset.y,
+        total: contentSize.height,
+        visible: layoutMeasurement.height,
+      });
+    }}
+    scrollEventThrottle={16}>
+    <Text style={{
+      fontSize: theme.typography.body - 2,
+      color: theme.colors.subtle,
+      lineHeight: 22,
+      paddingRight: 8,
+    }}>
+      {currentDua.translation}
+    </Text>
+  </ScrollView>
+
+  {/* Smart indicator — hidden when no scrolling needed */}
+  {calculateIndicator(translationScrollData, 80).show && (
+    <View style={{
+      width: 3,
+      height: 80,
+      backgroundColor: theme.colors.border,
+      borderRadius: 3,
+      marginLeft: 4,
+    }}>
+      <View style={{
+        width: 3,
+        backgroundColor: theme.colors.accent,
+        borderRadius: 3,
+        height: calculateIndicator(translationScrollData, 80).height,
+        marginTop: calculateIndicator(translationScrollData, 80).top,
+      }}/>
+    </View>
+  )}
+</View>
 
 {/* Wrapper — layers counter circle on top of progress ring
     NOTE: position 'relative' on parent allows children to use
