@@ -186,22 +186,25 @@ const calculateIndicator = (scrollData, trackHeight) => {
   }
 
   // ─── Main Counter Screen ─────────────────────────────────────────
-  return (
-    <View style={{
-      flex: 1,
-      backgroundColor: theme.colors.background,
-      padding: theme.spacing.screen,
-      // NOTE: paddingBottom prevents buttons overlapping
-      // the phone's system navigation bar at the bottom
-      paddingBottom: 80,
-    }}>
+return (
+  <View style={{
+    flex: 1,
+    backgroundColor: theme.colors.background,
+    padding: theme.spacing.screen,
+    paddingBottom: 60,
+  }}>
+
+    {/* ── TOP ZONE — scrollable content ── */}
+    <ScrollView
+      style={{ flex: 1 }}
+      showsVerticalScrollIndicator={false}>
 
       {/* Progress — shows current position in playlist */}
       <Text style={{
         fontSize: theme.typography.small,
         color: theme.colors.subtle,
         letterSpacing: 2,
-        marginTop: 20,
+        marginTop: 8,
         marginBottom: 4,
         textAlign: 'center',
       }}>
@@ -221,228 +224,238 @@ const calculateIndicator = (scrollData, trackHeight) => {
       </Text>
 
       {/* Arabic text container with smart scroll indicator */}
-<View style={{
-  maxHeight: 200,
-  marginBottom: 24,
-  flexDirection: 'row',
-}}>
-  <ScrollView
-    showsVerticalScrollIndicator={false}
-    style={{ flex: 1 }}
-    onScroll={(e) => {
-      const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
-      setArabicScrollData({
-        offset: contentOffset.y,
-        total: contentSize.height,
-        visible: layoutMeasurement.height,
-      });
-    }}
-    scrollEventThrottle={16}>
-    <Text style={{
-      fontSize: theme.typography.arabic,
-      color: theme.colors.text,
-      textAlign: 'right',
-      lineHeight: 44,
-      paddingRight: 8,
-    }}>
-      {currentDua.arabic}
-    </Text>
-  </ScrollView>
-
-  {/* Smart indicator track — only visible when scrolling needed */}
-  {calculateIndicator(arabicScrollData, 200).show && (
-    <View style={{
-      width: 3,
-      height: 200,
-      backgroundColor: theme.colors.border,
-      borderRadius: 3,
-      marginLeft: 4,
-    }}>
       <View style={{
-        width: 3,
-        backgroundColor: theme.colors.accent,
-        borderRadius: 3,
-        // NOTE: height and position calculated dynamically
-        height: calculateIndicator(arabicScrollData, 200).height,
-        marginTop: calculateIndicator(arabicScrollData, 200).top,
-      }}/>
-    </View>
-  )}
-</View>
+        maxHeight: 160,
+        marginBottom: 24,
+        flexDirection: 'row',
+      }}>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          style={{ flex: 1 }}
+          onScroll={(e) => {
+            const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
+            setArabicScrollData({
+              offset: contentOffset.y,
+              total: contentSize.height,
+              visible: layoutMeasurement.height,
+            });
+          }}
+          scrollEventThrottle={16}>
+          <Text style={{
+            fontSize: theme.typography.arabic,
+            color: theme.colors.text,
+            textAlign: 'right',
+            lineHeight: 44,
+            paddingRight: 8,
+          }}>
+            {currentDua.arabic}
+          </Text>
+        </ScrollView>
 
-   {/* Translation container with smart scroll indicator */}
-<View style={{
-  maxHeight: 80,
-  marginBottom: 32,
-  flexDirection: 'row',
-}}>
-  <ScrollView
-    showsVerticalScrollIndicator={false}
-    style={{ flex: 1 }}
-    onScroll={(e) => {
-      const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
-      setTranslationScrollData({
-        offset: contentOffset.y,
-        total: contentSize.height,
-        visible: layoutMeasurement.height,
-      });
-    }}
-    scrollEventThrottle={16}>
-    <Text style={{
-      fontSize: theme.typography.body - 2,
-      color: theme.colors.subtle,
-      lineHeight: 22,
-      paddingRight: 8,
-    }}>
-      {currentDua.translation}
-    </Text>
-  </ScrollView>
+        {/* Smart indicator — Arabic */}
+        {calculateIndicator(arabicScrollData, 160).show && (
+          <View style={{
+            width: 3,
+            height: 160,
+            backgroundColor: theme.colors.border,
+            borderRadius: 3,
+            marginLeft: 4,
+          }}>
+            <View style={{
+              width: 3,
+              backgroundColor: theme.colors.accent,
+              borderRadius: 3,
+              height: calculateIndicator(arabicScrollData, 160).height,
+              marginTop: calculateIndicator(arabicScrollData, 160).top,
+            }}/>
+          </View>
+        )}
+      </View>
 
-  {/* Smart indicator — hidden when no scrolling needed */}
-  {calculateIndicator(translationScrollData, 80).show && (
-    <View style={{
-      width: 3,
-      height: 80,
-      backgroundColor: theme.colors.border,
-      borderRadius: 3,
-      marginLeft: 4,
-    }}>
+      {/* Translation container with smart scroll indicator */}
       <View style={{
-        width: 3,
-        backgroundColor: theme.colors.accent,
-        borderRadius: 3,
-        height: calculateIndicator(translationScrollData, 80).height,
-        marginTop: calculateIndicator(translationScrollData, 80).top,
-      }}/>
-    </View>
-  )}
-</View>
+        maxHeight: 80,
+        marginBottom: 16,
+        flexDirection: 'row',
+      }}>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          style={{ flex: 1 }}
+          onScroll={(e) => {
+            const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
+            setTranslationScrollData({
+              offset: contentOffset.y,
+              total: contentSize.height,
+              visible: layoutMeasurement.height,
+            });
+          }}
+          scrollEventThrottle={16}>
+          <Text style={{
+            fontSize: theme.typography.body - 2,
+            color: theme.colors.subtle,
+            lineHeight: 22,
+            paddingRight: 8,
+          }}>
+            {currentDua.translation}
+          </Text>
+        </ScrollView>
 
-{/* Wrapper — layers counter circle on top of progress ring
-    NOTE: position 'relative' on parent allows children to use
-    position 'absolute' to overlap each other */}
-<View style={{
-  alignSelf: 'center',
-  justifyContent: 'center',
-  alignItems: 'center',
-  marginBottom: 32,
-  position: 'relative',
-  width: 180,
-  height: 180,
-}}>
+        {/* Smart indicator — Translation */}
+        {calculateIndicator(translationScrollData, 80).show && (
+          <View style={{
+            width: 3,
+            height: 80,
+            backgroundColor: theme.colors.border,
+            borderRadius: 3,
+            marginLeft: 4,
+          }}>
+            <View style={{
+              width: 3,
+              backgroundColor: theme.colors.accent,
+              borderRadius: 3,
+              height: calculateIndicator(translationScrollData, 80).height,
+              marginTop: calculateIndicator(translationScrollData, 80).top,
+            }}/>
+          </View>
+        )}
+      </View>
 
-  {/* Progress ring — sits at base layer behind the counter */}
-  {(() => {
-    const size = 180;
-    const strokeWidth = 6;
-    const radius = (size - strokeWidth) / 2;
-    const circumference = 2 * Math.PI * radius;
-    const progress = count / currentDua.target;
-    const strokeDashoffset = circumference * (1 - progress);
+    </ScrollView>
+    {/* ── END TOP ZONE ── */}
 
-    return (
-      <Svg
-        width={size}
-        height={size}
-        style={{ position: 'absolute' }}>
-
-        {/* Background ring — always visible in border colour */}
-        <Circle
-          cx={90} cy={90} r={radius}
-          stroke={theme.colors.border}
-          strokeWidth={strokeWidth}
-          fill="transparent"
-        />
-
-        {/* Foreground ring — fills as count increases */}
-        <Circle
-          cx={90} cy={90} r={radius}
-          stroke={theme.colors.accent}
-          strokeWidth={strokeWidth}
-          fill="transparent"
-          strokeDasharray={circumference}
-          strokeDashoffset={strokeDashoffset}
-          transform={`rotate(-90, 90, 90)`}
-          strokeLinecap="round"
-        />
-
-      </Svg>
-    );
-  })()}
-
-  {/* TAP TO COUNT — floats on top of the progress ring
-      NOTE: position 'absolute' lifts this out of normal flow
-      so it overlaps the SVG ring underneath */}
-  <TouchableOpacity
-    onPress={handleTap}
-    style={{
-      position: 'absolute',
-      backgroundColor: theme.colors.card,
-      borderRadius: 100,
-      width: 140,
-      height: 140,
-      alignItems: 'center',
-      justifyContent: 'center',
+    {/* ── BOTTOM ZONE — pinned counter, never moves ── */}
+    <View style={{
+      // NOTE: borderTopWidth adds subtle divider between
+      // scrollable content and fixed counter below
+      borderTopWidth: 1,
+      borderTopColor: theme.colors.border,
+      paddingTop: 16,
     }}>
-    <Text style={{
-      fontSize: 48,
-      color: theme.colors.accent,
-      fontWeight: 'bold',
-    }}>
-      {count}
-    </Text>
-    <Text style={{
-      fontSize: theme.typography.small,
-      color: theme.colors.subtle,
-      letterSpacing: 2,
-    }}>
-      OF {currentDua.target}
-    </Text>
-  </TouchableOpacity>
 
-</View>
-
-      {/* Navigation buttons — Previous and Next sit side by side
-          NOTE: Both buttons live INSIDE this View so flexDirection
-          'row' correctly places them horizontally next to each other */}
+      {/* Counter row — PREV, ring/counter, NEXT */}
       <View style={{
         flexDirection: 'row',
-        justifyContent: 'space-between',
         alignItems: 'center',
+        justifyContent: 'space-between',
         paddingHorizontal: theme.spacing.card,
       }}>
 
-        {/* Previous — disabled and greyed out on first dua */}
+        {/* Previous arrow */}
         <TouchableOpacity
           onPress={handlePrevious}
-          disabled={currentIndex === 0}>
+          disabled={currentIndex === 0}
+          style={{
+            padding: 16,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}>
           <Text style={{
+            fontSize: 28,
             color: currentIndex === 0
               ? theme.colors.border
               : theme.colors.subtle,
-            fontSize: theme.typography.body,
-            letterSpacing: 2,
           }}>
-            ← PREV
+            ←
           </Text>
         </TouchableOpacity>
 
-        {/* Next — disabled and greyed out on last dua */}
+        {/* Ring/Counter wrapper */}
+        <View style={{
+          alignSelf: 'center',
+          justifyContent: 'center',
+          alignItems: 'center',
+          position: 'relative',
+          width: 150,
+          height: 150,
+        }}>
+
+          {/* Progress ring */}
+          {(() => {
+            const size = 150;
+            const strokeWidth = 6;
+            const radius = (size - strokeWidth) / 2;
+            const circumference = 2 * Math.PI * radius;
+            const progress = count / currentDua.target;
+            const strokeDashoffset = circumference * (1 - progress);
+
+            return (
+              <Svg
+                width={size}
+                height={size}
+                style={{ position: 'absolute' }}>
+                <Circle
+                  cx={size / 2} cy={size / 2} r={radius}
+                  stroke={theme.colors.border}
+                  strokeWidth={strokeWidth}
+                  fill="transparent"
+                />
+                <Circle
+                  cx={size / 2} cy={size / 2} r={radius}
+                  stroke={theme.colors.accent}
+                  strokeWidth={strokeWidth}
+                  fill="transparent"
+                  strokeDasharray={circumference}
+                  strokeDashoffset={strokeDashoffset}
+                  transform={`rotate(-90, ${size/2}, ${size/2})`}
+                  strokeLinecap="round"
+                />
+              </Svg>
+            );
+          })()}
+
+          {/* Counter circle */}
+          <TouchableOpacity
+            onPress={handleTap}
+            style={{
+              position: 'absolute',
+              backgroundColor: theme.colors.card,
+              borderRadius: 100,
+              width: 115,
+              height: 115,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}>
+            <Text style={{
+              fontSize: 40,
+              color: theme.colors.accent,
+              fontWeight: 'bold',
+            }}>
+              {count}
+            </Text>
+            <Text style={{
+              fontSize: theme.typography.small,
+              color: theme.colors.subtle,
+              letterSpacing: 2,
+            }}>
+              OF {currentDua.target}
+            </Text>
+          </TouchableOpacity>
+
+        </View>
+
+        {/* Next arrow */}
         <TouchableOpacity
           onPress={handleNext}
-          disabled={isLastDua}>
+          disabled={isLastDua}
+          style={{
+            padding: 16,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}>
           <Text style={{
+            fontSize: 28,
             color: isLastDua
               ? theme.colors.border
               : theme.colors.subtle,
-            fontSize: theme.typography.body,
-            letterSpacing: 2,
           }}>
-            NEXT →
+            →
           </Text>
         </TouchableOpacity>
 
       </View>
     </View>
-  );
+    {/* ── END BOTTOM ZONE ── */}
+
+  </View>
+);
 }
