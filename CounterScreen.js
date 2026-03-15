@@ -202,91 +202,89 @@ export default function CounterScreen({ route, navigation }) {
         {currentDua.translation}
       </Text>
 
-{/* Progress ring — shows visual completion percentage */}
-{(() => {
-  // Ring dimensions
-  const size = 180;
-  const strokeWidth = 6;
-  const radius = (size - strokeWidth) / 2;
-  
-  // NOTE: circumference is the total length of the circle's edge
-  // like measuring the perimeter of a circular running track
-  const circumference = 2 * Math.PI * radius;
-  
-  // progress goes from 0 (start) to 1 (complete)
-  const progress = count / currentDua.target;
-  
-  // How much of the ring to "fill" with colour
-  // NOTE: strokeDashoffset shrinks as progress grows
-  // like slowly revealing a hidden circle underneath
-  const strokeDashoffset = circumference * (1 - progress);
+{/* Wrapper — layers counter circle on top of progress ring
+    NOTE: position 'relative' on parent allows children to use
+    position 'absolute' to overlap each other */}
+<View style={{
+  alignSelf: 'center',
+  justifyContent: 'center',
+  alignItems: 'center',
+  marginBottom: 32,
+  position: 'relative',
+  width: 180,
+  height: 180,
+}}>
 
-  return (
-    <Svg
-      width={size}
-      height={size}
-      style={{ alignSelf: 'center', marginBottom: 8 }}>
-      
-      {/* Background ring — always full, shows in border colour */}
-      <Circle
-        cx={size / 2}
-        cy={size / 2}
-        r={radius}
-        stroke={theme.colors.border}
-        strokeWidth={strokeWidth}
-        fill="transparent"
-      />
+  {/* Progress ring — sits at base layer behind the counter */}
+  {(() => {
+    const size = 180;
+    const strokeWidth = 6;
+    const radius = (size - strokeWidth) / 2;
+    const circumference = 2 * Math.PI * radius;
+    const progress = count / currentDua.target;
+    const strokeDashoffset = circumference * (1 - progress);
 
-      {/* Foreground ring — fills as count increases */}
-      <Circle
-        cx={size / 2}
-        cy={size / 2}
-        r={radius}
-        stroke={theme.colors.accent}
-        strokeWidth={strokeWidth}
-        fill="transparent"
-        strokeDasharray={circumference}
-        strokeDashoffset={strokeDashoffset}
-        // NOTE: rotate -90 degrees so ring starts filling from top
-        // By default SVG circles start from the right (3 o'clock)
-        transform={`rotate(-90, ${size / 2}, ${size / 2})`}
-        strokeLinecap="round"
-      />
+    return (
+      <Svg
+        width={size}
+        height={size}
+        style={{ position: 'absolute' }}>
 
-    </Svg>
-  );
-})()}
+        {/* Background ring — always visible in border colour */}
+        <Circle
+          cx={90} cy={90} r={radius}
+          stroke={theme.colors.border}
+          strokeWidth={strokeWidth}
+          fill="transparent"
+        />
 
-      {/* TAP TO COUNT — the primary interaction element */}
-      <TouchableOpacity
-        onPress={handleTap}
-        style={{
-          backgroundColor: theme.colors.card,
-          borderRadius: 100,
-          width: 160,
-          height: 160,
-          alignSelf: 'center',
-          alignItems: 'center',
-          justifyContent: 'center',
-          borderWidth: 2,
-          borderColor: theme.colors.accent,
-          marginBottom: 32,
-        }}>
-        <Text style={{
-          fontSize: 48,
-          color: theme.colors.accent,
-          fontWeight: 'bold',
-        }}>
-          {count}
-        </Text>
-        <Text style={{
-          fontSize: theme.typography.small,
-          color: theme.colors.subtle,
-          letterSpacing: 2,
-        }}>
-          OF {currentDua.target}
-        </Text>
-      </TouchableOpacity>
+        {/* Foreground ring — fills as count increases */}
+        <Circle
+          cx={90} cy={90} r={radius}
+          stroke={theme.colors.accent}
+          strokeWidth={strokeWidth}
+          fill="transparent"
+          strokeDasharray={circumference}
+          strokeDashoffset={strokeDashoffset}
+          transform={`rotate(-90, 90, 90)`}
+          strokeLinecap="round"
+        />
+
+      </Svg>
+    );
+  })()}
+
+  {/* TAP TO COUNT — floats on top of the progress ring
+      NOTE: position 'absolute' lifts this out of normal flow
+      so it overlaps the SVG ring underneath */}
+  <TouchableOpacity
+    onPress={handleTap}
+    style={{
+      position: 'absolute',
+      backgroundColor: theme.colors.card,
+      borderRadius: 100,
+      width: 140,
+      height: 140,
+      alignItems: 'center',
+      justifyContent: 'center',
+    }}>
+    <Text style={{
+      fontSize: 48,
+      color: theme.colors.accent,
+      fontWeight: 'bold',
+    }}>
+      {count}
+    </Text>
+    <Text style={{
+      fontSize: theme.typography.small,
+      color: theme.colors.subtle,
+      letterSpacing: 2,
+    }}>
+      OF {currentDua.target}
+    </Text>
+  </TouchableOpacity>
+
+</View>
 
       {/* Navigation buttons — Previous and Next sit side by side
           NOTE: Both buttons live INSIDE this View so flexDirection
