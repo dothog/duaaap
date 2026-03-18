@@ -12,6 +12,7 @@ import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import data from './husn_en.json';
 import { theme } from './theme';
 import Svg, { Circle } from 'react-native-svg';
+import * as Haptics from 'expo-haptics';
 
 export default function CounterScreen({ route, navigation }) {
   const { playlist } = route.params;
@@ -60,25 +61,43 @@ const [translationScrollData, setTranslationScrollData] = useState({
   const isLastDua = currentIndex === allDuas.length - 1;
 
   /**
-   * handleTap — called every time user taps the counter circle.
-   * Increments count and advances to next dua when target is reached.
-   * If on the last dua, marks the playlist as complete instead.
-   */
-  const handleTap = () => {
-    if (complete) return;
-    const newCount = count + 1;
+ * handleTap — called every time user taps the counter circle.
+ * Increments count and advances to next dua when target is reached.
+ * Each outcome triggers a different haptic intensity:
+ * - Normal count → light click
+ * - Dua complete → medium impact  
+ * - Playlist complete → heavy impact
+ */
+const handleTap = async () => {
+  if (complete) return;
+  const newCount = count + 1;
 
-    if (newCount >= currentDua.target) {
-      if (isLastDua) {
-        setComplete(true);
-      } else {
-        setCurrentIndex(currentIndex + 1);
-        setCount(0);
-      }
+  if (newCount >= currentDua.target) {
+    if (isLastDua) {
+      // Outcome 3 — entire playlist complete!
+      // Heavy vibration = big achievement feeling
+      await Haptics.notificationAsync(
+        Haptics.NotificationFeedbackType.Success
+      );
+      setComplete(true);
     } else {
-      setCount(newCount);
+      // Outcome 2 — dua complete, moving to next
+      // Medium impact = small achievement feeling
+      await Haptics.impactAsync(
+        Haptics.ImpactFeedbackStyle.Medium
+      );
+      setCurrentIndex(currentIndex + 1);
+      setCount(0);
     }
-  };
+  } else {
+    // Outcome 1 — normal count increase
+    // Light impact = subtle bead click feeling
+    await Haptics.impactAsync(
+      Haptics.ImpactFeedbackStyle.Light
+    );
+    setCount(newCount);
+  }
+};
 
   /**
    * handlePrevious — moves back one dua in the playlist.

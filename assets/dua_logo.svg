@@ -1,0 +1,182 @@
+<!--
+  ============================================================
+  File:    dua_logo.svg (v4)
+  Purpose: Primary logomark for the Dua App.
+           Double-ring circle, crescent moon badge at 12 o'clock,
+           calligraphic italic wordmark "dua app".
+  Palette: Ink (#2C2C2C), Terracotta (#A0522D), transparent bg.
+  Dependencies: None — pure SVG, no external fonts required
+                (system serif fallback chain provided).
+  ============================================================
+-->
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  viewBox="0 0 400 420"
+  width="400"
+  height="420"
+  role="img"
+  aria-label="Dua App Logo"
+>
+  <title>Dua App — Logo</title>
+
+  <!--
+    CRESCENT CONSTRUCTION — the correct mental model:
+    ─────────────────────────────────────────────────
+    Imagine stamping a full circle in terracotta ink.
+    Then take an eraser (slightly smaller, offset to one side)
+    and erase part of it. What remains is the crescent.
+
+    In SVG:
+      • The "stamp"  = a filled <circle> in terracotta
+      • The "eraser" = a black circle inside a <mask>
+      • Black in a mask = transparent (erased)
+      • White in a mask = opaque (kept)
+
+    One <defs> block. One <mask>. Applied once. No conflicts.
+  -->
+
+  <defs>
+    <!--
+      MASK: ring-gap
+      Cuts a clean notch out of both rings at the top
+      so the crescent badge appears to sit ON the rings,
+      not float inside them.
+      The notch is a rectangle across the very top of the ring arc.
+    -->
+    <mask id="ring-gap">
+      <rect width="400" height="420" fill="white"/>
+      <!-- Black rectangle blocks the top of the rings where crescent sits -->
+      <rect x="162" y="42" width="76" height="36" fill="black"/>
+    </mask>
+
+    <!--
+      MASK: crescent-shape
+      Carves the crescent from a full circle.
+      The full circle center: (200, 62)
+      The "bite" circle is offset to the RIGHT by 18px → (218, 58)
+      This leaves the LEFT side of the moon — a classic right-lit crescent.
+      Tilting the whole group -20° gives it a natural rising angle.
+    -->
+    <mask id="crescent-shape">
+      <!-- White = keep the full circle -->
+      <circle cx="200" cy="62" r="26" fill="white"/>
+      <!-- Black = erase the bite, offset right to carve left-facing crescent -->
+      <circle cx="218" cy="58" r="22" fill="black"/>
+    </mask>
+  </defs>
+
+  <!-- ─────────────────────────────────────────────────── -->
+  <!-- 1. OUTER RING                                       -->
+  <!-- ─────────────────────────────────────────────────── -->
+  <!--
+    Center: (200, 220). Radius: 150.
+    Masked at the top so the crescent badge sits cleanly over it.
+  -->
+  <circle
+    cx="200" cy="220" r="150"
+    fill="none"
+    stroke="#2C2C2C"
+    stroke-width="2"
+    mask="url(#ring-gap)"
+  />
+
+  <!-- ─────────────────────────────────────────────────── -->
+  <!-- 2. INNER RING                                       -->
+  <!-- ─────────────────────────────────────────────────── -->
+  <!--
+    Radius: 138 — 12px inside the outer ring.
+    Thinner stroke creates visual depth between the two rings.
+  -->
+  <circle
+    cx="200" cy="220" r="138"
+    fill="none"
+    stroke="#2C2C2C"
+    stroke-width="0.9"
+    opacity="0.4"
+    mask="url(#ring-gap)"
+  />
+
+  <!-- ─────────────────────────────────────────────────── -->
+  <!-- 3. TASBIH TICK MARKS                                -->
+  <!-- ─────────────────────────────────────────────────── -->
+  <!--
+    Three terracotta ticks at 3, 6, and 9 o'clock.
+    Each tick runs from the inner ring inward by 10px.
+    WHY terracotta: accent color draws the eye and ties
+    to the crescent, giving the ring a cohesive palette.
+  -->
+  <!-- 3 o'clock: right side, y = 220 (center), x = 200+150 = 350 -->
+  <line x1="350" y1="220" x2="340" y2="220"
+    stroke="#A0522D" stroke-width="1.8" stroke-linecap="round" opacity="0.7"/>
+  <!-- 6 o'clock: bottom, x = 200, y = 220+150 = 370 -->
+  <line x1="200" y1="370" x2="200" y2="360"
+    stroke="#A0522D" stroke-width="1.8" stroke-linecap="round" opacity="0.7"/>
+  <!-- 9 o'clock: left side, y = 220, x = 200-150 = 50 -->
+  <line x1="50" y1="220" x2="60" y2="220"
+    stroke="#A0522D" stroke-width="1.8" stroke-linecap="round" opacity="0.7"/>
+
+  <!-- ─────────────────────────────────────────────────── -->
+  <!-- 4. CRESCENT MOON BADGE                              -->
+  <!-- ─────────────────────────────────────────────────── -->
+  <!--
+    Positioned at the 12 o'clock point of the outer ring.
+    Top of ring = cy - r = 220 - 150 = 70. Moon center at y=62
+    so it straddles the ring edge (half inside, half above).
+
+    The crescent-shape mask does the subtraction cleanly:
+    full terracotta circle, black bite offset to the right.
+    The whole group is rotated -20° around the moon's center
+    for a natural tilted-rising-moon angle.
+  -->
+  <g transform="rotate(-20, 200, 62)">
+    <circle
+      cx="200" cy="62" r="26"
+      fill="#A0522D"
+      mask="url(#crescent-shape)"
+    />
+  </g>
+
+  <!-- ─────────────────────────────────────────────────── -->
+  <!-- 5. WORDMARK                                         -->
+  <!-- ─────────────────────────────────────────────────── -->
+  <!--
+    "dua" — large italic serif, centered in the ring.
+    Vertical center of ring = 220. Text sits just above center.
+    Cormorant Garamond has the widest thick/thin stroke contrast
+    of common system serifs — closest Latin analog to qalam script.
+  -->
+  <text
+    x="200" y="232"
+    text-anchor="middle"
+    font-family="'Cormorant Garamond', 'Cormorant', 'Didot', 'Bodoni MT', 'Palatino Linotype', Georgia, serif"
+    font-size="92"
+    font-weight="300"
+    font-style="italic"
+    fill="#2C2C2C"
+    letter-spacing="-2"
+  >dua</text>
+
+  <!-- "app" — wide-tracked label beneath -->
+  <text
+    x="200" y="258"
+    text-anchor="middle"
+    font-family="'Cormorant Garamond', 'Palatino Linotype', Georgia, serif"
+    font-size="11"
+    font-weight="500"
+    fill="#2C2C2C"
+    letter-spacing="10"
+  >app</text>
+
+  <!-- ─────────────────────────────────────────────────── -->
+  <!-- 6. ORNAMENTAL RULE                                  -->
+  <!-- ─────────────────────────────────────────────────── -->
+  <!-- Hairline arms + terracotta diamond nuqta (dot) -->
+  <g transform="translate(200, 278)">
+    <line x1="-40" y1="0" x2="-7" y2="0"
+      stroke="#2C2C2C" stroke-width="0.7" opacity="0.3" stroke-linecap="round"/>
+    <polygon points="0,-3.5 4.5,0 0,3.5 -4.5,0" fill="#A0522D" opacity="0.65"/>
+    <line x1="7" y1="0" x2="40" y2="0"
+      stroke="#2C2C2C" stroke-width="0.7" opacity="0.3" stroke-linecap="round"/>
+  </g>
+
+</svg>
