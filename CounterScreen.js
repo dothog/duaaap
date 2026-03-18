@@ -3,12 +3,14 @@
  * Purpose: Displays a dua-by-dua counter interface for a selected playlist.
  *          Users tap a large circle to count recitations, with auto-advance
  *          to the next dua when the target count is reached.
- * Dependencies: React Native, husn_en.json, theme.js
+ *          Each dua supports independent audio playback via expo-av.
+ * Dependencies: React Native, expo-av, husn_en.json, theme.js
  * Context: Navigated to from PlaylistScreen with a playlist object as a param.
  */
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
+import { Audio } from 'expo-av';
 import data from './husn_en.json';
 import { theme } from './theme';
 import Svg, { Circle } from 'react-native-svg';
@@ -19,20 +21,82 @@ export default function CounterScreen({ route, navigation }) {
 
   /**
    * Build a flat list of all duas in this playlist.
-   * We filter sections by datasetTitles, then flatten
-   * each section's TEXT array into one unified list.
-   * Each dua carries its repeat target from the dataset.
+   * Supports two lookup strategies depending on what the caller provided:
+   *
+   * 1. duaIds (new) — used by PlaylistDetailScreen and user-created playlists.
+   *    Looks up each dua by ID across all sections. Preserves the caller's order.
+   *
+   * 2. datasetTitles (legacy) — used by PlaylistScreen (curated playlists).
+   *    Filters sections by title then flattens, preserving section order.
+   *
+   * Think of it like two different ways to find books in a library:
+   * by ISBN (duaIds) or by shelf label (datasetTitles).
    */
-  const allDuas = data.English
-    .filter(section => playlist.datasetTitles.includes(section.TITLE))
-    .flatMap(section => section.TEXT.map(dua => ({
-      id: dua.ID,
-      arabic: dua.ARABIC_TEXT,
-      translation: dua.TRANSLATED_TEXT,
-      // NOTE: Default to 1 if REPEAT is missing or 0 in the dataset
-      target: dua.REPEAT || 1,
-      sectionTitle: section.TITLE,
-    })));
+  const allDuas = playlist.duaIds && playlist.duaIds.length > 0
+    // Path 1 — ID-based lookup, preserves caller order.
+    //
+    // Each ID is tried as a GROUP first (outer data.English entry — the
+    // level that categories.js and AddDuasScreen work with).  When found,
+    // ALL verses of that group are included in sequence so the whole
+    // playlist is one continuous session without stopping between groups.
+    //
+    // If the ID is not a group ID (e.g. a verse-level ID stored by the
+    // DuaScreen "Add to Playlist" button), we fall back to a flat verse
+    // lookup so those playlists still work correctly.
+    //
+    // Think of it like a playlist of albums: playing "Abbey Road" plays
+    // every track back-to-back; but if you added a single track by its
+    // own ID, that still works too.
+    ? (() => {
+        // Group index: outer section ID → section object
+        const groupIdx = Object.fromEntries(
+          data.English.map(s => [Number(s.ID), s])
+        );
+        // Verse index: inner TEXT item ID → verse object (fallback)
+        const verseIdx = Object.fromEntries(
+          data.English.flatMap(s =>
+            s.TEXT.map(dua => [Number(dua.ID), {
+              id: dua.ID,
+              arabic: dua.ARABIC_TEXT,
+              translation: dua.TRANSLATED_TEXT,
+              target: dua.REPEAT || 1,
+              sectionTitle: s.TITLE,
+              audio: dua.AUDIO || null,
+            }])
+          )
+        );
+        return playlist.duaIds.flatMap(id => {
+          const numId = Number(id);
+          const group = groupIdx[numId];
+          if (group) {
+            // Group found → include all its verses as a continuous block
+            return group.TEXT.map(dua => ({
+              id: dua.ID,
+              arabic: dua.ARABIC_TEXT,
+              translation: dua.TRANSLATED_TEXT,
+              target: dua.REPEAT || 1,
+              sectionTitle: group.TITLE,
+              audio: dua.AUDIO || null,
+            }));
+          }
+          // Fallback → treat as a direct verse ID
+          const verse = verseIdx[numId];
+          return verse ? [verse] : [];
+        });
+      })()
+    // Path 2 — legacy section-title lookup
+    : data.English
+        .filter(section => playlist.datasetTitles.includes(section.TITLE))
+        .flatMap(section => section.TEXT.map(dua => ({
+          id: dua.ID,
+          arabic: dua.ARABIC_TEXT,
+          translation: dua.TRANSLATED_TEXT,
+          // NOTE: Default to 1 if REPEAT is missing or 0 in the dataset
+          target: dua.REPEAT || 1,
+          sectionTitle: section.TITLE,
+          // AUDIO is present on ~267/284 duas — null if missing
+          audio: dua.AUDIO || null,
+        })));
 
   // Tracks which dua in the playlist we are currently on
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -42,6 +106,80 @@ export default function CounterScreen({ route, navigation }) {
 
   // Tracks whether the entire playlist has been completed
   const [complete, setComplete] = useState(false);
+
+  // ── Audio state ─────────────────────────────────────────────────
+  // Holds the expo-av Sound object for the current verse
+  const soundRef = useRef(null);
+
+  // Whether audio is currently playing
+  const [isPlaying, setIsPlaying] = useState(false);
+
+  /**
+   * stopAndUnloadAudio — stops playback and frees the Sound object.
+   * Called on verse advance and on screen unmount.
+   */
+  const stopAndUnloadAudio = async () => {
+    if (soundRef.current) {
+      await soundRef.current.stopAsync().catch(() => {});
+      await soundRef.current.unloadAsync().catch(() => {});
+      soundRef.current = null;
+    }
+    setIsPlaying(false);
+  };
+
+  /**
+   * When the current verse index changes, stop audio and reset
+   * to paused state — do NOT auto-play the next verse.
+   */
+  useEffect(() => {
+    stopAndUnloadAudio();
+  }, [currentIndex]);
+
+  /**
+   * On screen unmount, release the Sound object to prevent memory leaks.
+   * Think of it like turning off a radio when you leave the room.
+   */
+  useEffect(() => {
+    return () => { stopAndUnloadAudio(); };
+  }, []);
+
+  /**
+   * handlePlayPause — toggles audio playback for the current verse.
+   * - If playing: pauses but keeps sound loaded (cheap resume).
+   * - If paused with sound loaded: resumes from paused position.
+   * - If no sound loaded yet: fetches and plays the audio URL.
+   * Counter tap (handleTap) is completely unaffected by this.
+   */
+  const handlePlayPause = async () => {
+    if (!currentDua.audio) return;
+
+    if (isPlaying) {
+      // Pause — keep Sound object alive for cheap resume
+      await soundRef.current?.pauseAsync();
+      setIsPlaying(false);
+    } else if (soundRef.current) {
+      // Resume from paused position
+      await soundRef.current.playAsync();
+      setIsPlaying(true);
+    } else {
+      // First play — load from URL then start
+      await Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
+      const { sound } = await Audio.Sound.createAsync(
+        { uri: currentDua.audio },
+        { shouldPlay: true }
+      );
+      soundRef.current = sound;
+      setIsPlaying(true);
+
+      // Auto-reset when track finishes naturally
+      sound.setOnPlaybackStatusUpdate((status) => {
+        if (status.didJustFinish) {
+          setIsPlaying(false);
+          soundRef.current = null;
+        }
+      });
+    }
+  };
 
    // Stores scroll measurements for Arabic text
 const [arabicScrollData, setArabicScrollData] = useState({
@@ -241,6 +379,58 @@ return (
       }}>
         {currentDua.sectionTitle}
       </Text>
+
+      {/* ── Audio control — play/pause or no-audio badge ── */}
+      <View style={{
+        flexDirection: 'row',
+        justifyContent: 'flex-end',
+        alignItems: 'center',
+        marginBottom: 10,
+        paddingRight: 4,
+      }}>
+        {currentDua.audio ? (
+          <TouchableOpacity
+            onPress={handlePlayPause}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              paddingHorizontal: 12,
+              paddingVertical: 5,
+              borderRadius: theme.radius.button,
+              borderWidth: 1,
+              borderColor: isPlaying ? theme.colors.accent : theme.colors.border,
+              backgroundColor: isPlaying
+                ? theme.colors.accent + '18'
+                : 'transparent',
+            }}>
+            <Text style={{
+              fontSize: 11,
+              color: isPlaying ? theme.colors.accent : theme.colors.subtle,
+              letterSpacing: 1.5,
+              fontFamily: 'Courier New',
+            }}>
+              {isPlaying ? '⏸  PAUSE' : '▶  PLAY'}
+            </Text>
+          </TouchableOpacity>
+        ) : (
+          <View style={{
+            paddingHorizontal: 10,
+            paddingVertical: 4,
+            borderRadius: theme.radius.button,
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+          }}>
+            <Text style={{
+              fontSize: 10,
+              color: theme.colors.border,
+              letterSpacing: 1.5,
+              fontFamily: 'Courier New',
+            }}>
+              NO AUDIO
+            </Text>
+          </View>
+        )}
+      </View>
 
       {/* Arabic text container with smart scroll indicator */}
       <View style={{

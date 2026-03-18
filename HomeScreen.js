@@ -1,4 +1,4 @@
-import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
 import { Svg, Circle, Line, G, Defs, Mask, Rect, Polygon, Text as SvgText } from 'react-native-svg';
 
 const DuaLogo = ({ size = 280 }) => {
@@ -84,77 +84,18 @@ const DuaLogo = ({ size = 280 }) => {
 };
 import { theme } from './theme';
 
-const CATEGORIES = [
-  {
-    id: 1,
-    emoji: '🌅',
-    title: 'Morning',
-    datasetTitles: [
-      'Words of remembrance for morning and evening',
-      'supplications for when you wake up'
-    ]
-  },
-  {
-    id: 2,
-    emoji: '🌙',
-    title: 'Evening',
-    datasetTitles: [
-      'Words of remembrance for morning and evening',
-      'What to say before sleeping'
-    ]
-  },
-  {
-    id: 3,
-    emoji: '🏠',
-    title: 'Home',
-    datasetTitles: [
-      'What to say when entering the home',
-      'What to say when leaving the home'
-    ]
-  },
-  {
-    id: 4,
-    emoji: '💚',
-    title: 'Emotional State',
-    datasetTitles: [
-      'Invocations in times of worry and grief',
-      'Invocations for anguish',
-      'Invocation for anger'
-    ]
-  },
-  {
-    id: 5,
-    emoji: '🤲',
-    title: 'Prayer',
-    datasetTitles: [
-      'Invocations for the beginning of the prayer',
-      'What to say after completing the prayer'
-    ]
-  },
-  {
-    id: 6,
-    emoji: '✈️',
-    title: 'Travel',
-    datasetTitles: [
-      'Invocation for traveling',
-      'What to say upon returning from a Journey'
-    ]
-  },
-];
-
 export default function HomeScreen({ navigation }) {
   return (
-    <ScrollView
-      style={{
-        flex: 1,
-        backgroundColor: theme.colors.background,
-        padding: theme.spacing.screen,
-      }}
-      contentContainerStyle={{ paddingBottom: 60 }}
-    >
+    <View style={{
+      flex: 1,
+      backgroundColor: theme.colors.background,
+      paddingHorizontal: theme.spacing.screen,
+      alignItems: 'center',
+      justifyContent: 'center',
+    }}>
 
-      {/* App header */}
-      <View style={{ marginTop: 40, marginBottom: 30, alignItems: 'center' }}>
+      {/* Logo + subtitle */}
+      <View style={{ alignItems: 'center', marginBottom: 48 }}>
         <DuaLogo size={280} />
         <Text style={{
           fontSize: theme.typography.small,
@@ -166,95 +107,88 @@ export default function HomeScreen({ navigation }) {
         </Text>
       </View>
 
-      {/* Search button */}
-      <TouchableOpacity
-        onPress={() => navigation.navigate('Search')}
-        style={{
-          padding: theme.spacing.card,
-          marginBottom: theme.spacing.between,
-          backgroundColor: theme.colors.card,
-          borderRadius: theme.radius.button,
-          borderWidth: 1,
-          borderColor: theme.colors.border,
-        }}>
-        <Text style={{ color: theme.colors.subtle, fontSize: 16 }}>
-          🔍  Search duas...
-        </Text>
-      </TouchableOpacity>
+      {/* Navigation buttons */}
+      <View style={{ width: '100%', gap: 12 }}>
 
-      {/* Favorites button */}
-      <TouchableOpacity
-        onPress={() => navigation.navigate('Favorites')}
-        style={{
-          padding: theme.spacing.card,
-          marginBottom: 24,
-          backgroundColor: theme.colors.accent,
-          borderRadius: theme.radius.button,
-        }}>
-        <Text style={{
-          color: '#fff',
-          fontSize: 16,
-          textAlign: 'center',
-        }}>
-          ❤️  My Favorites
-        </Text>
-      </TouchableOpacity>
-      {/* Dua Counter button */}
-<TouchableOpacity
-  onPress={() => navigation.navigate('Playlist')}
-  style={{
-    padding: theme.spacing.card,
-    marginBottom: theme.spacing.between,
-    backgroundColor: theme.colors.text,
-    borderRadius: theme.radius.button,
-  }}>
-  <Text style={{
-    color: theme.colors.background,
-    fontSize: theme.typography.body,
-    textAlign: 'center',
-  }}>
-    📿  Dua Counter
-  </Text>
-</TouchableOpacity>
-{/* Reminder Button */}
-          <TouchableOpacity
-  onPress={() => navigation.navigate('Reminder')}
-  style={{
-    padding: 15,
-    marginBottom: 20,
-    backgroundColor: '#457b9d',
-    borderRadius: 12,
-  }}>
-  <Text style={{ color: 'white', fontSize: 16, textAlign: 'center' }}>
-    🔔 Daily Reminder
-  </Text>
-</TouchableOpacity>
-      {/* Category cards */}
-      {CATEGORIES.map((cat) => (
+        {/* Dua Counter — primary action */}
         <TouchableOpacity
-          key={cat.id}
-          onPress={() => navigation.navigate('Duas', {
-            category: cat.title,
-            datasetTitles: cat.datasetTitles
-          })}
+          onPress={() => navigation.navigate('DuaCounter')}
           style={{
             padding: theme.spacing.card,
-            marginBottom: theme.spacing.between,
-            backgroundColor: theme.colors.card,
-            borderRadius: theme.radius.card,
-            borderWidth: 1,
-            borderColor: theme.colors.border,
+            backgroundColor: theme.colors.accent,
+            borderRadius: theme.radius.button,
+            alignItems: 'center',
           }}>
           <Text style={{
+            color: '#fff',
             fontSize: theme.typography.body,
-            color: theme.colors.text,
+            letterSpacing: 0.5,
           }}>
-            {cat.emoji}  {cat.title}
+            🕌  Dua Counter
           </Text>
         </TouchableOpacity>
 
-      ))}
+        {/* Categories */}
+        <TouchableOpacity
+          onPress={() => navigation.navigate('Categories')}
+          style={{
+            padding: theme.spacing.card,
+            backgroundColor: theme.colors.card,
+            borderRadius: theme.radius.button,
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+            alignItems: 'center',
+          }}>
+          <Text style={{
+            color: theme.colors.text,
+            fontSize: theme.typography.body,
+            letterSpacing: 0.5,
+          }}>
+            📖  Categories
+          </Text>
+        </TouchableOpacity>
 
-    </ScrollView>
+        {/* Playlists */}
+        <TouchableOpacity
+          onPress={() => navigation.navigate('Playlists')}
+          style={{
+            padding: theme.spacing.card,
+            backgroundColor: theme.colors.card,
+            borderRadius: theme.radius.button,
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+            alignItems: 'center',
+          }}>
+          <Text style={{
+            color: theme.colors.text,
+            fontSize: theme.typography.body,
+            letterSpacing: 0.5,
+          }}>
+            📋  Playlists
+          </Text>
+        </TouchableOpacity>
+
+        {/* Reminders */}
+        <TouchableOpacity
+          onPress={() => navigation.navigate('Reminder')}
+          style={{
+            padding: theme.spacing.card,
+            backgroundColor: theme.colors.card,
+            borderRadius: theme.radius.button,
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+            alignItems: 'center',
+          }}>
+          <Text style={{
+            color: theme.colors.text,
+            fontSize: theme.typography.body,
+            letterSpacing: 0.5,
+          }}>
+            🔔  Reminders
+          </Text>
+        </TouchableOpacity>
+
+      </View>
+    </View>
   );
 }

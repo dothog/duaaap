@@ -6,7 +6,12 @@ import SearchScreen from './SearchScreen';
 import FavoritesScreen from './FavoritesScreen';
 import ReminderScreen from './ReminderScreen';
 import PlaylistScreen from './PlaylistScreen';
+import PlaylistsScreen from './PlaylistsScreen';
+import PlaylistDetailScreen from './PlaylistDetailScreen';
 import CounterScreen from './CounterScreen';
+import CategoriesScreen from './screens/CategoriesScreen';
+import DuaCounterScreen from './screens/DuaCounterScreen';
+import AddDuasScreen from './screens/AddDuasScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -22,11 +27,16 @@ export default function App() {
         headerShadowVisible: false,
       }}>
         <Stack.Screen name="Home" component={HomeScreen} />
+        <Stack.Screen name="Categories" component={CategoriesScreen} />
+        <Stack.Screen name="DuaCounter" component={DuaCounterScreen} />
+        <Stack.Screen name="AddDuas" component={AddDuasScreen} />
         <Stack.Screen name="Duas" component={DuaScreen} />
         <Stack.Screen name="Search" component={SearchScreen} />
         <Stack.Screen name="Favorites" component={FavoritesScreen} />
         <Stack.Screen name="Reminder" component={ReminderScreen} />
         <Stack.Screen name="Playlist" component={PlaylistScreen} />
+        <Stack.Screen name="Playlists" component={PlaylistsScreen} />
+        <Stack.Screen name="PlaylistDetail" component={PlaylistDetailScreen} />
         <Stack.Screen name="Counter" component={CounterScreen} 
         options={{
           //Match header to parchment theme
