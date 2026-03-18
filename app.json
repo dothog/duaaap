@@ -29,6 +29,12 @@
         "projectId": "0737d311-ef26-4798-a5e6-a677f32d6588"
       }
     },
-    "plugins": []
+    "plugins": [],
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/0737d311-ef26-4798-a5e6-a677f32d6588"
+    }
   }
 }
