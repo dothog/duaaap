@@ -108,7 +108,7 @@ export default function HomeScreen({ navigation }) {
       </View>
 
       {/* Navigation buttons */}
-      <View style={{ width: '100%', gap: 12 }}>
+      <View style={{ width: '100%', gap: 12, paddingBottom: 60 }}>
 
         {/* Dua Counter — primary action */}
         <TouchableOpacity
@@ -185,6 +185,26 @@ export default function HomeScreen({ navigation }) {
             letterSpacing: 0.5,
           }}>
             🔔  Reminders
+          </Text>
+        </TouchableOpacity>
+
+        {/* Search */}
+        <TouchableOpacity
+          onPress={() => navigation.navigate('Search')}
+          style={{
+            padding: theme.spacing.card,
+            backgroundColor: theme.colors.card,
+            borderRadius: theme.radius.button,
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+            alignItems: 'center',
+          }}>
+          <Text style={{
+            color: theme.colors.text,
+            fontSize: theme.typography.body,
+            letterSpacing: 0.5,
+          }}>
+            🔍  Search
           </Text>
         </TouchableOpacity>
 

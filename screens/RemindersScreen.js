@@ -61,8 +61,11 @@ import { theme } from '../theme';
 /** Offset options shown in the segmented control. */
 const OFFSET_OPTIONS = [0, 5, 10, 15];
 
-/** Day abbreviations for the weekly day-picker (0=Sun … 6=Sat). */
-const DAY_ABBR = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+/**
+ * Day abbreviations for the weekly day-picker (0=Sun … 6=Sat).
+ * Two-character codes avoid the ambiguity of single-letter T (Tue/Thu) and S (Sun/Sat).
+ */
+const DAY_ABBR = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 
 /**
  * BLANK_DRAFT — factory default for a new custom reminder modal.
@@ -78,6 +81,7 @@ const BLANK_DRAFT = {
   exactTime:        '06:00',
   repeatType:       'daily',    // 'daily' | 'weekly' | 'once'
   repeatDays:       [0,1,2,3,4,5,6],
+  exactDate:        '',         // 'YYYY-MM-DD' — used only when repeatType === 'once'
   playlistId:       null,
   enabled:          true,
 };
@@ -105,6 +109,98 @@ const scheduleSummary = (reminder) => {
   else repeatPart = (reminder.repeatDays ?? []).map(d => DAY_ABBR[d]).join(' ');
 
   return `${timePart} · ${repeatPart}`;
+};
+
+/**
+ * WHEEL_H — fixed pixel height of each item row in WheelPicker.
+ * Must be the same value used for snapToInterval and paddingVertical.
+ */
+const WHEEL_H = 40;
+
+/**
+ * WheelPicker — pure-JS scrollable drum-roll picker.
+ * Uses a ScrollView with snapToInterval so no native module is required.
+ *
+ * Props:
+ *   items          – array of { label: string, value: any }
+ *   selectedValue  – currently selected value (compared via ===)
+ *   onSelect(val)  – called with the newly selected value after scroll settles
+ *
+ * Layout: 3 rows visible at once; selected item is the centre row.
+ * Top/bottom padding spacers (WHEEL_H each) allow the first and last items
+ * to reach the centre position.
+ */
+const WheelPicker = ({ items, selectedValue, onSelect, onTouchStart, onTouchEnd }) => {
+  const scrollRef = useRef(null);
+  const selectedIndex = Math.max(0, items.findIndex(i => i.value === selectedValue));
+
+  // Scroll to the initial position on mount (non-animated so it's instant).
+  // setTimeout gives the ScrollView a chance to complete its layout pass.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      scrollRef.current?.scrollTo({ y: selectedIndex * WHEEL_H, animated: false });
+    }, 50);
+    return () => clearTimeout(t);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const onMomentumScrollEnd = (e) => {
+    const raw = e.nativeEvent.contentOffset.y / WHEEL_H;
+    const idx = Math.max(0, Math.min(Math.round(raw), items.length - 1));
+    onSelect(items[idx].value);
+    // Re-enable parent scroll now that this wheel has settled.
+    onTouchEnd?.();
+  };
+
+  return (
+    <View
+      style={{ flex: 1, height: WHEEL_H * 3, overflow: 'hidden' }}
+      onTouchStart={onTouchStart}
+      onTouchEnd={onTouchEnd}
+    >
+      {/* Subtle highlight bar behind the centre (selected) row */}
+      <View
+        pointerEvents="none"
+        style={{
+          position: 'absolute',
+          top: WHEEL_H,
+          left: 4,
+          right: 4,
+          height: WHEEL_H,
+          backgroundColor: theme.colors.accent + '20',
+          borderRadius: 6,
+        }}
+      />
+      <ScrollView
+        ref={scrollRef}
+        showsVerticalScrollIndicator={false}
+        snapToInterval={WHEEL_H}
+        decelerationRate="fast"
+        nestedScrollEnabled={true}
+        keyboardShouldPersistTaps="handled"
+        onMomentumScrollEnd={onMomentumScrollEnd}
+        contentContainerStyle={{ paddingVertical: WHEEL_H }}
+      >
+        {items.map((item) => {
+          const isSelected = item.value === selectedValue;
+          return (
+            <View
+              key={String(item.value)}
+              style={{ height: WHEEL_H, justifyContent: 'center', alignItems: 'center' }}
+            >
+              <Text style={{
+                color: isSelected ? theme.colors.accent : theme.colors.text,
+                fontSize: isSelected ? 16 : 13,
+                fontWeight: isSelected ? '600' : '400',
+                opacity: isSelected ? 1 : 0.45,
+              }}>
+                {item.label}
+              </Text>
+            </View>
+          );
+        })}
+      </ScrollView>
+    </View>
+  );
 };
 
 
@@ -190,6 +286,12 @@ export default function RemindersScreen() {
   // customDraft — working copy of the reminder being created / edited.
   const [customDraft, setCustomDraft] = useState({ ...BLANK_DRAFT });
   // (no native time picker — see the inline HH / MM TextInput pair below)
+  /**
+   * modalScrollEnabled — temporarily disabled while a WheelPicker is being
+   * scrolled so the parent ScrollView doesn't steal the vertical gesture.
+   * Reset to true on touch end / momentum end.
+   */
+  const [modalScrollEnabled, setModalScrollEnabled] = useState(true);
 
   // ── Toast ────────────────────────────────────────────────────────
   const [toast, setToast] = useState(null);
@@ -501,8 +603,11 @@ export default function RemindersScreen() {
     if (prayerTimes) {
       // Pass customReminders so scheduleAllNotifications handles both types
       await scheduleAllNotifications(updated, prayerTimes, playlists, customReminders);
+      showToast('Reminders saved');
+    } else {
+      // Settings saved but no prayer times fetched yet — notifications not scheduled
+      showToast('Settings saved — fetch prayer times to enable scheduling');
     }
-    showToast('Reminders saved');
   };
 
   // ── Render helpers ───────────────────────────────────────────────
@@ -576,7 +681,7 @@ export default function RemindersScreen() {
 
           {/* ── Offset picker ── */}
           <View>
-            <Text style={labelStyle}>NOTIFY BEFORE</Text>
+            <Text style={labelStyle}>NOTIFY WHEN</Text>
             <View style={{ flexDirection: 'row', gap: 8 }}>
               {OFFSET_OPTIONS.map(opt => {
                 const active = prayer.offsetMinutes === opt;
@@ -784,13 +889,28 @@ export default function RemindersScreen() {
         transparent
         animationType="slide"
         onRequestClose={() => setCustomModalVisible(false)}>
-        <KeyboardAvoidingView
-          style={{ flex: 1 }}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          {/**
+           * KAV is the direct child of Modal so the OS keyboard avoidance
+           * has full control of the layout root.
+           * iOS: 'padding' nudges the sheet up by the keyboard height.
+           * Android: undefined — let the OS window soft-input mode handle it
+           * natively (avoids the resize flicker caused by 'height' mode).
+           */}
+          <KeyboardAvoidingView
+            style={{ flex: 1, justifyContent: 'flex-end' }}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 10 : 0}>
 
-          {/* Backdrop */}
+          {/**
+           * Absolute backdrop — sits inside KAV but covers the full screen
+           * because it is position:absolute. Tapping it closes the modal.
+           */}
           <TouchableOpacity
-            style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' }}
+            style={{
+              position: 'absolute',
+              top: 0, left: 0, right: 0, bottom: 0,
+              backgroundColor: 'rgba(0,0,0,0.4)',
+            }}
             activeOpacity={1}
             onPress={() => setCustomModalVisible(false)}
           />
@@ -827,7 +947,10 @@ export default function RemindersScreen() {
             <ScrollView
               contentContainerStyle={{ padding: theme.spacing.screen, paddingBottom: 32, gap: 20 }}
               keyboardShouldPersistTaps="handled"
-              showsVerticalScrollIndicator={false}>
+              showsVerticalScrollIndicator={false}
+              bounces={false}
+              nestedScrollEnabled={true}
+              scrollEnabled={modalScrollEnabled}>
 
               {/* ── Label ── */}
               <View>
@@ -1082,6 +1205,98 @@ export default function RemindersScreen() {
                 </View>
               )}
 
+              {/* ── Date picker (once only) ── */}
+              {d.repeatType === 'once' && (() => {
+                /**
+                 * Parse exactDate ('YYYY-MM-DD') into numeric parts.
+                 * Falls back to today when the field is empty so the pickers
+                 * always open on a sensible default rather than position 0.
+                 */
+                const today      = new Date();
+                const currentYear = today.getFullYear();
+                const MONTH_NAMES = [
+                  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+                ];
+
+                let selDay   = today.getDate();
+                let selMonth = today.getMonth() + 1; // 1-based
+                let selYear  = currentYear;
+
+                if (d.exactDate) {
+                  const [yy, mo, dd] = d.exactDate.split('-').map(Number);
+                  if (yy) selYear  = yy;
+                  if (mo) selMonth = mo;
+                  if (dd) selDay   = dd;
+                }
+
+                /**
+                 * updateDate — writes a new YYYY-MM-DD string to customDraft
+                 * whenever any of the three wheels changes.
+                 */
+                const updateDate = (day, month, year) => {
+                  const mm = String(month).padStart(2, '0');
+                  const dd = String(day).padStart(2, '0');
+                  setCustomDraft(prev => ({
+                    ...prev,
+                    exactDate: `${year}-${mm}-${dd}`,
+                  }));
+                };
+
+                // Year range: current year to current year + 5
+                const yearItems = Array.from({ length: 6 }, (_, i) => currentYear + i);
+
+                return (
+                  <View>
+                    <Text style={labelStyle}>DATE</Text>
+                    <View style={{
+                      flexDirection: 'row',
+                      borderWidth: 1,
+                      borderColor: theme.colors.border,
+                      borderRadius: theme.radius.button,
+                      backgroundColor: theme.colors.card,
+                      overflow: 'hidden',
+                      height: WHEEL_H * 3,
+                    }}>
+
+                      {/* Day */}
+                      <WheelPicker
+                        items={Array.from({ length: 31 }, (_, i) => ({ label: String(i + 1), value: i + 1 }))}
+                        selectedValue={selDay}
+                        onSelect={val => updateDate(val, selMonth, selYear)}
+                        onTouchStart={() => setModalScrollEnabled(false)}
+                        onTouchEnd={() => setModalScrollEnabled(true)}
+                      />
+
+                      {/* Divider */}
+                      <View style={{ width: 1, backgroundColor: theme.colors.border, opacity: 0.35 }} />
+
+                      {/* Month */}
+                      <WheelPicker
+                        items={MONTH_NAMES.map((name, idx) => ({ label: name, value: idx + 1 }))}
+                        selectedValue={selMonth}
+                        onSelect={val => updateDate(selDay, val, selYear)}
+                        onTouchStart={() => setModalScrollEnabled(false)}
+                        onTouchEnd={() => setModalScrollEnabled(true)}
+                      />
+
+                      {/* Divider */}
+                      <View style={{ width: 1, backgroundColor: theme.colors.border, opacity: 0.35 }} />
+
+                      {/* Year */}
+                      <WheelPicker
+                        items={yearItems.map(yr => ({ label: String(yr), value: yr }))}
+                        selectedValue={selYear}
+                        onSelect={val => updateDate(selDay, selMonth, val)}
+                        onTouchStart={() => setModalScrollEnabled(false)}
+                        onTouchEnd={() => setModalScrollEnabled(true)}
+                      />
+
+                    </View>
+                  </View>
+                );
+              })()}
+
               {/* ── Playlist ── */}
               <View>
                 <Text style={labelStyle}>PLAYLIST</Text>
@@ -1218,12 +1433,14 @@ export default function RemindersScreen() {
           keyExtractor={(item) => item.id ?? '__none__'}
           renderItem={({ item }) => {
             const isSelected =
-              pickerTarget?.field === 'main'
-                ? reminders?.prayers[pickerTarget.prayerName]?.playlistId === item.id
-                : typeof pickerTarget?.field === 'number'
-                  ? reminders?.prayers[pickerTarget.prayerName]
-                      ?.customNotifications[pickerTarget.field]?.playlistId === item.id
-                  : false;
+              pickerTarget?.type === 'customDraft'
+                ? customDraft.playlistId === item.id
+                : pickerTarget?.field === 'main'
+                  ? reminders?.prayers[pickerTarget.prayerName]?.playlistId === item.id
+                  : typeof pickerTarget?.field === 'number'
+                    ? reminders?.prayers[pickerTarget.prayerName]
+                        ?.customNotifications[pickerTarget.field]?.playlistId === item.id
+                    : false;
 
             return (
               <TouchableOpacity
@@ -1259,7 +1476,25 @@ export default function RemindersScreen() {
   );
 
   // ── Loading guard ────────────────────────────────────────────────
-  if (!reminders) return null;
+  if (!reminders) return (
+    <View style={{
+      flex: 1,
+      backgroundColor: theme.colors.background,
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 12,
+    }}>
+      <ActivityIndicator size="large" color={theme.colors.accent} />
+      <Text style={{
+        fontSize: theme.typography.small,
+        color: theme.colors.subtle,
+        letterSpacing: 2,
+        fontFamily: 'Courier New',
+      }}>
+        LOADING REMINDERS...
+      </Text>
+    </View>
+  );
 
   // ── Main render ──────────────────────────────────────────────────
   return (
@@ -1494,7 +1729,7 @@ export default function RemindersScreen() {
 
       </ScrollView>
 
-      {/* ── Fixed Save All button ── */}
+      {/* ── Fixed Save & Schedule button ── */}
       <View style={{
         paddingHorizontal: theme.spacing.screen,
         paddingVertical: 16,
@@ -1516,9 +1751,18 @@ export default function RemindersScreen() {
             fontSize: theme.typography.body,
             letterSpacing: 0.5,
           }}>
-            Save All
+            Save & Schedule
           </Text>
         </TouchableOpacity>
+        <Text style={{
+          fontSize: theme.typography.small,
+          color: theme.colors.subtle,
+          textAlign: 'center',
+          marginTop: 6,
+          fontStyle: 'italic',
+        }}>
+          This will reschedule all active reminders
+        </Text>
       </View>
 
       {/* ── Playlist picker modal ── */}

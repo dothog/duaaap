@@ -32,6 +32,7 @@ import {
   ScrollView,
   Alert,
   Animated,
+  ActivityIndicator,
 } from 'react-native';
 import data from '../husn_en.json';
 import { CATEGORIES } from '../data/categories';
@@ -52,6 +53,15 @@ const groupIndex = Object.fromEntries(
 
 export default function AddDuasScreen({ route, navigation }) {
   const { playlistId, playlistName, playlistType } = route.params;
+
+  // ── Load state ───────────────────────────────────────────────────
+  /** true while the initial playlist fetch is in flight. */
+  const [isLoading, setIsLoading] = useState(true);
+  /**
+   * true if the playlist ID from route params wasn't found in storage.
+   * Triggers the error screen instead of a broken empty picker.
+   */
+  const [playlistError, setPlaylistError] = useState(false);
 
   // ── State ────────────────────────────────────────────────────────
 
@@ -94,29 +104,34 @@ export default function AddDuasScreen({ route, navigation }) {
 
   // ── Load existing playlist state on mount ───────────────────────
   useEffect(() => {
-    loadPlaylists().then(all => {
-      const pl = all.find(p => p.id === playlistId);
-      if (!pl) return;
+    loadPlaylists()
+      .then(all => {
+        const pl = all.find(p => p.id === playlistId);
+        if (!pl) {
+          setPlaylistError(true);
+          return;
+        }
 
-      if (playlistType === 'category') {
-        // Try to find which CATEGORIES entry matches the saved duaIds
-        const savedNums = pl.duaIds.map(Number);
-        const matchingCat = CATEGORIES.find(cat =>
-          cat.duaIds.length === savedNums.length &&
-          cat.duaIds.every(id => savedNums.includes(Number(id)))
-        );
-        if (matchingCat) {
-          setSelectedCatId(matchingCat.id);
-          setInitialCatId(matchingCat.id);
+        if (playlistType === 'category') {
+          // Try to find which CATEGORIES entry matches the saved duaIds
+          const savedNums = pl.duaIds.map(Number);
+          const matchingCat = CATEGORIES.find(cat =>
+            cat.duaIds.length === savedNums.length &&
+            cat.duaIds.every(id => savedNums.includes(Number(id)))
+          );
+          if (matchingCat) {
+            setSelectedCatId(matchingCat.id);
+            setInitialCatId(matchingCat.id);
+          }
+        } else {
+          if (pl.duaIds.length > 0) {
+            const ids = new Set(pl.duaIds.map(Number));
+            setInitialIds(ids);
+            setSelectedIds(new Set(ids));
+          }
         }
-      } else {
-        if (pl.duaIds.length > 0) {
-          const ids = new Set(pl.duaIds.map(Number));
-          setInitialIds(ids);
-          setSelectedIds(new Set(ids));
-        }
-      }
-    });
+      })
+      .finally(() => setIsLoading(false));
   }, [playlistId]);
 
   // ── isDirty — true if the selection differs from the loaded state ─
@@ -319,7 +334,7 @@ export default function AddDuasScreen({ route, navigation }) {
               fontFamily: 'Courier New',
               marginTop: 4,
             }}>
-              {cat.duaIds.length} DUAS
+              {cat.duaIds.length} {cat.duaIds.length === 1 ? 'SECTION' : 'SECTIONS'}
             </Text>
           </TouchableOpacity>
         );
@@ -383,7 +398,7 @@ export default function AddDuasScreen({ route, navigation }) {
                   fontFamily: 'Courier New',
                   marginTop: 2,
                 }}>
-                  {cat.duaIds.length} DUAS
+                  {cat.duaIds.length} {cat.duaIds.length === 1 ? 'SECTION' : 'SECTIONS'}
                   {catSelectedCount > 0 ? `  ·  ${catSelectedCount} SELECTED` : ''}
                 </Text>
               </View>
@@ -484,6 +499,56 @@ export default function AddDuasScreen({ route, navigation }) {
         );
       })}
     </ScrollView>
+  );
+
+  // ── Loading guard ────────────────────────────────────────────────
+  if (isLoading) return (
+    <View style={{
+      flex: 1,
+      backgroundColor: theme.colors.background,
+      alignItems: 'center',
+      justifyContent: 'center',
+    }}>
+      <ActivityIndicator size="large" color={theme.colors.accent} />
+    </View>
+  );
+
+  // ── Playlist not found ───────────────────────────────────────────
+  if (playlistError) return (
+    <View style={{
+      flex: 1,
+      backgroundColor: theme.colors.background,
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: theme.spacing.screen,
+    }}>
+      <Text style={{ fontSize: 32, marginBottom: 16 }}>⚠️</Text>
+      <Text style={{
+        fontSize: theme.typography.body,
+        color: theme.colors.subtle,
+        textAlign: 'center',
+        lineHeight: 24,
+        marginBottom: 24,
+      }}>
+        Playlist not found — please go back and try again
+      </Text>
+      <TouchableOpacity
+        onPress={() => navigation.goBack()}
+        style={{
+          paddingHorizontal: 24,
+          paddingVertical: 12,
+          backgroundColor: theme.colors.accent,
+          borderRadius: theme.radius.button,
+        }}>
+        <Text style={{
+          color: '#fff',
+          fontSize: theme.typography.body,
+          letterSpacing: 0.5,
+        }}>
+          Go Back
+        </Text>
+      </TouchableOpacity>
+    </View>
   );
 
   // ── Main render ──────────────────────────────────────────────────

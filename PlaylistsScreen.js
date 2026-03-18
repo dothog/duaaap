@@ -21,6 +21,7 @@ import {
   Animated,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import {
@@ -73,6 +74,7 @@ const getCardColor = (id) => {
 
 export default function PlaylistsScreen({ navigation }) {
   const [playlists, setPlaylists] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   // ── Modal state ─────────────────────────────────────────────────
   const [modalVisible, setModalVisible] = useState(false);
@@ -106,7 +108,9 @@ export default function PlaylistsScreen({ navigation }) {
    */
   useFocusEffect(
     useCallback(() => {
-      loadPlaylists().then(setPlaylists);
+      loadPlaylists()
+        .then(setPlaylists)
+        .finally(() => setIsLoading(false));
     }, [])
   );
 
@@ -286,6 +290,18 @@ export default function PlaylistsScreen({ navigation }) {
     </View>
   );
 
+  // ── Loading guard ────────────────────────────────────────────────
+  if (isLoading) return (
+    <View style={{
+      flex: 1,
+      backgroundColor: theme.colors.background,
+      alignItems: 'center',
+      justifyContent: 'center',
+    }}>
+      <ActivityIndicator size="large" color={theme.colors.accent} />
+    </View>
+  );
+
   // ── Main render ───────────────────────────────────────────────────
   return (
     <View style={{
@@ -343,25 +359,24 @@ export default function PlaylistsScreen({ navigation }) {
         transparent
         animationType="slide"
         onRequestClose={() => setModalVisible(false)}>
-        {/**
-         * KeyboardAvoidingView is the outermost wrapper so it can push
-         * the sheet up on both iOS (padding) and Android (height).
-         * The flex:1 + justifyContent:'flex-end' alignment sits inside it.
-         */}
-        {/**
-         * iOS: KAV behavior='padding' nudges the sheet up by the keyboard height.
-         * Android: behavior={undefined} — let the system's windowSoftInputMode
-         * handle it natively. Fighting Android with behavior='height' caused
-         * the sheet to flicker up/down when the keyboard dismissed.
-         */}
-        <KeyboardAvoidingView
-          style={{ flex: 1 }}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <View style={{ flex: 1 }}>
+          {/**
+           * Absolute backdrop — covers the ENTIRE modal area, including
+           * behind the sheet, so background cards are fully blocked.
+           * Positioned behind the KAV so the sheet still receives touches.
+           */}
           <TouchableOpacity
-            style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' }}
+            style={{
+              position: 'absolute',
+              top: 0, left: 0, right: 0, bottom: 0,
+              backgroundColor: 'rgba(0,0,0,0.5)',
+            }}
             activeOpacity={1}
             onPress={() => { setModalVisible(false); setNewName(''); }}
           />
+          <KeyboardAvoidingView
+            style={{ flex: 1, justifyContent: 'flex-end' }}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           {/**
            * ScrollView with keyboardShouldPersistTaps="handled" ensures that
            * tapping the type buttons or confirm button while the keyboard is
@@ -460,6 +475,19 @@ export default function PlaylistsScreen({ navigation }) {
                 ))}
               </View>
 
+              {/* Category hint — shown when name input is hidden */}
+              {newType === 'category' && (
+                <Text style={{
+                  fontSize: theme.typography.small,
+                  color: theme.colors.subtle,
+                  marginBottom: 16,
+                  marginTop: -8,
+                  fontStyle: 'italic',
+                }}>
+                  The category name will be used automatically
+                </Text>
+              )}
+
               {/* Confirm button — always enabled for category; requires name for single/custom */}
               <TouchableOpacity
                 onPress={handleCreate}
@@ -491,7 +519,8 @@ export default function PlaylistsScreen({ navigation }) {
               </TouchableOpacity>
 
           </ScrollView>
-        </KeyboardAvoidingView>
+          </KeyboardAvoidingView>
+        </View>
       </Modal>
 
     </View>

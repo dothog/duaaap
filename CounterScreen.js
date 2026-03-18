@@ -9,7 +9,7 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, Animated } from 'react-native';
 import { Audio } from 'expo-av';
 import data from './husn_en.json';
 import { theme } from './theme';
@@ -114,6 +114,23 @@ export default function CounterScreen({ route, navigation }) {
   // Whether audio is currently playing
   const [isPlaying, setIsPlaying] = useState(false);
 
+  // ── Toast (audio error feedback) ────────────────────────────────
+  const [toast, setToast] = useState(null);
+  const toastOpacity = useRef(new Animated.Value(0)).current;
+
+  /**
+   * showToast — briefly displays a message overlay, then fades out.
+   * @param {string} message
+   */
+  const showToast = (message) => {
+    setToast(message);
+    Animated.sequence([
+      Animated.timing(toastOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),
+      Animated.delay(1400),
+      Animated.timing(toastOpacity, { toValue: 0, duration: 300, useNativeDriver: true }),
+    ]).start(() => setToast(null));
+  };
+
   /**
    * stopAndUnloadAudio — stops playback and frees the Sound object.
    * Called on verse advance and on screen unmount.
@@ -144,6 +161,15 @@ export default function CounterScreen({ route, navigation }) {
   }, []);
 
   /**
+   * Set the navigation header title to the playlist name so the user
+   * always knows which playlist they are reciting. Falls back to
+   * 'Dua Counter' if no title was passed.
+   */
+  useEffect(() => {
+    navigation.setOptions({ title: playlist.title || 'Dua Counter' });
+  }, []);
+
+  /**
    * handlePlayPause — toggles audio playback for the current verse.
    * - If playing: pauses but keeps sound loaded (cheap resume).
    * - If paused with sound loaded: resumes from paused position.
@@ -163,21 +189,28 @@ export default function CounterScreen({ route, navigation }) {
       setIsPlaying(true);
     } else {
       // First play — load from URL then start
-      await Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
-      const { sound } = await Audio.Sound.createAsync(
-        { uri: currentDua.audio },
-        { shouldPlay: true }
-      );
-      soundRef.current = sound;
-      setIsPlaying(true);
+      try {
+        await Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
+        const { sound } = await Audio.Sound.createAsync(
+          { uri: currentDua.audio },
+          { shouldPlay: true }
+        );
+        soundRef.current = sound;
+        setIsPlaying(true);
 
-      // Auto-reset when track finishes naturally
-      sound.setOnPlaybackStatusUpdate((status) => {
-        if (status.didJustFinish) {
-          setIsPlaying(false);
-          soundRef.current = null;
-        }
-      });
+        // Auto-reset when track finishes naturally
+        sound.setOnPlaybackStatusUpdate((status) => {
+          if (status.didJustFinish) {
+            setIsPlaying(false);
+            soundRef.current = null;
+          }
+        });
+      } catch {
+        // Network error or bad URL — inform the user without crashing
+        setIsPlaying(false);
+        soundRef.current = null;
+        showToast('Audio unavailable for this dua');
+      }
     }
   };
 
@@ -292,6 +325,48 @@ const calculateIndicator = (scrollData, trackHeight) => {
   };
 };
 
+  // ─── Empty playlist guard ────────────────────────────────────────
+  // Shown when the playlist's IDs don't resolve to any known duas in the
+  // dataset — prevents a crash on currentDua.target / currentDua.audio access.
+  if (allDuas.length === 0) {
+    return (
+      <View style={{
+        flex: 1,
+        backgroundColor: theme.colors.background,
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: theme.spacing.screen,
+      }}>
+        <Text style={{ fontSize: 32, marginBottom: 24 }}>⚠️</Text>
+        <Text style={{
+          fontSize: theme.typography.body,
+          color: theme.colors.subtle,
+          textAlign: 'center',
+          lineHeight: 24,
+          marginBottom: 32,
+        }}>
+          Could not load duas — please go back and try again
+        </Text>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={{
+            backgroundColor: theme.colors.accent,
+            borderRadius: theme.radius.button,
+            padding: theme.spacing.card,
+            width: '100%',
+          }}>
+          <Text style={{
+            color: '#fff',
+            textAlign: 'center',
+            fontSize: theme.typography.body,
+          }}>
+            Go Back
+          </Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
   // ─── Completion Screen ───────────────────────────────────────────
   if (complete) {
     return (
@@ -323,7 +398,7 @@ const calculateIndicator = (scrollData, trackHeight) => {
         </Text>
 
         <TouchableOpacity
-          onPress={() => navigation.goBack()}
+          onPress={() => navigation.navigate('Home')}
           style={{
             padding: theme.spacing.card,
             backgroundColor: theme.colors.accent,
@@ -335,7 +410,7 @@ const calculateIndicator = (scrollData, trackHeight) => {
             textAlign: 'center',
             fontSize: theme.typography.body,
           }}>
-            Return to Playlists
+            Return Home
           </Text>
         </TouchableOpacity>
       </View>
@@ -664,6 +739,29 @@ return (
       </View>
     </View>
     {/* ── END BOTTOM ZONE ── */}
+
+    {/* ── Toast — audio error feedback ── */}
+    {toast && (
+      <Animated.View style={{
+        position: 'absolute',
+        bottom: 80,
+        left: 24,
+        right: 24,
+        backgroundColor: theme.colors.text,
+        borderRadius: theme.radius.button,
+        padding: 14,
+        alignItems: 'center',
+        opacity: toastOpacity,
+      }}>
+        <Text style={{
+          color: theme.colors.background,
+          fontSize: theme.typography.small,
+          letterSpacing: 0.5,
+        }}>
+          {toast}
+        </Text>
+      </Animated.View>
+    )}
 
   </View>
 );

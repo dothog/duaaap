@@ -16,6 +16,7 @@ import {
   FlatList,
   Alert,
   Animated,
+  ActivityIndicator,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import data from './husn_en.json';
@@ -205,7 +206,16 @@ export default function PlaylistDetailScreen({ route, navigation }) {
     });
   };
 
-  if (!playlist) return null;
+  if (!playlist) return (
+    <View style={{
+      flex: 1,
+      backgroundColor: theme.colors.background,
+      alignItems: 'center',
+      justifyContent: 'center',
+    }}>
+      <ActivityIndicator size="large" color={theme.colors.accent} />
+    </View>
+  );
 
   // ── Empty state ─────────────────────────────────────────────────
   const renderEmpty = () => (

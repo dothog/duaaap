@@ -140,9 +140,10 @@ export default function DuaScreen({ route }) {
   /**
    * handleAddToNewPlaylist — creates a new 'custom' playlist containing
    * just this dua, then shows the success toast.
+   * Name uses the current time (HH:MM) to avoid duplicates after deletions.
    */
   const handleAddToNewPlaylist = async () => {
-    const name = `My Playlist ${sheetPlaylists.length + 1}`;
+    const name = `My Playlist ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
     const created = await createPlaylist(name, 'custom', [addingDua.ID], null);
     setAddingDua(null);
     showToast(`Added to ${created.name}`);
@@ -168,11 +169,6 @@ export default function DuaScreen({ route }) {
   const sections = duaIds
     .map(id => groupIndex[Number(id)])
     .filter(Boolean);
-  console.log(
-    '[DuaScreen] category:', category,
-    '| sections:', sections.length,
-    '| first 3 titles:', sections.slice(0, 3).map(s => `[${s.ID}] ${s.TITLE}`)
-  );
 
   const handleFavorite = async (id) => {
     if (favorites.includes(id)) {
@@ -184,12 +180,35 @@ export default function DuaScreen({ route }) {
     }
   };
 
+  // ── Empty state guard ────────────────────────────────────────────
+  if (sections.length === 0) {
+    return (
+      <View style={{
+        flex: 1,
+        backgroundColor: theme.colors.background,
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: theme.spacing.screen,
+      }}>
+        <Text style={{ fontSize: 32, marginBottom: 16 }}>📭</Text>
+        <Text style={{
+          fontSize: theme.typography.body,
+          color: theme.colors.subtle,
+          textAlign: 'center',
+          lineHeight: 24,
+        }}>
+          No duas found for this category
+        </Text>
+      </View>
+    );
+  }
+
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-    <ScrollView style={{
-      flex: 1,
-      padding: theme.spacing.screen,
-    }}>
+    <ScrollView
+      style={{ flex: 1 }}
+      contentContainerStyle={{ padding: theme.spacing.screen, paddingBottom: 40 }}
+    >
 
       {/* Category heading */}
       <Text style={{
@@ -297,10 +316,9 @@ export default function DuaScreen({ route }) {
                     <Text style={{
                       fontSize: 10,
                       color: theme.colors.subtle,
-                      letterSpacing: 1,
                       fontFamily: 'Courier New',
                     }}>
-                      + LIST
+                      + Playlist
                     </Text>
                   </TouchableOpacity>
 
@@ -380,7 +398,11 @@ export default function DuaScreen({ route }) {
             marginBottom: 20,
           }}
             numberOfLines={1}>
-            {addingDua?.TRANSLATED_TEXT?.slice(0, 60)}…
+            {addingDua?.TRANSLATED_TEXT
+              ? addingDua.TRANSLATED_TEXT.length > 60
+                ? addingDua.TRANSLATED_TEXT.slice(0, 60) + '…'
+                : addingDua.TRANSLATED_TEXT
+              : ''}
           </Text>
 
           {/* + New Playlist option */}
@@ -443,7 +465,7 @@ export default function DuaScreen({ route }) {
                   fontSize: theme.typography.small,
                   color: theme.colors.subtle,
                 }}>
-                  {item.duaIds.length} duas
+                  {item.duaIds.length} {item.duaIds.length === 1 ? 'section' : 'sections'}
                 </Text>
               </TouchableOpacity>
             )}

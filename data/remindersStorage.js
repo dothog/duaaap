@@ -325,12 +325,20 @@ const scheduleSingleCustom = async (reminder, hour, minute) => {
     }
 
   } else if (reminder.repeatType === 'once') {
-    // Fire at the next occurrence of hour:minute (today if still in the future,
-    // otherwise tomorrow).
-    const now       = new Date();
-    const scheduled = new Date(now);
-    scheduled.setHours(hour, minute, 0, 0);
-    if (scheduled <= now) scheduled.setDate(scheduled.getDate() + 1);
+    let scheduled;
+
+    if (reminder.exactDate) {
+      // User specified an explicit date ('YYYY-MM-DD') — use it directly.
+      const [y, mo, day] = reminder.exactDate.split('-').map(Number);
+      scheduled = new Date(y, mo - 1, day, hour, minute, 0, 0);
+    } else {
+      // No explicit date — fire at the next occurrence of hour:minute.
+      // If that time has already passed today, schedule it for tomorrow.
+      const now = new Date();
+      scheduled = new Date(now);
+      scheduled.setHours(hour, minute, 0, 0);
+      if (scheduled <= now) scheduled.setDate(scheduled.getDate() + 1);
+    }
 
     await Notifications.scheduleNotificationAsync({
       content,

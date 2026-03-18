@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import data from './husn_en.json';
 import { getFavorites, removeFavorite } from './favorites';
 import { theme } from './theme';
@@ -13,9 +13,12 @@ const ALL_DUAS = data.English.flatMap((section) =>
 
 export default function FavoritesScreen() {
   const [favorites, setFavorites] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    getFavorites().then(setFavorites);
+    getFavorites()
+      .then(setFavorites)
+      .finally(() => setIsLoading(false));
   }, []);
 
   const favoriteDuas = ALL_DUAS.filter((dua) =>
@@ -27,23 +30,22 @@ export default function FavoritesScreen() {
     setFavorites(favorites.filter((f) => f !== id));
   };
 
-  return (
-    <ScrollView style={{
+  if (isLoading) return (
+    <View style={{
       flex: 1,
       backgroundColor: theme.colors.background,
-      padding: theme.spacing.screen,
+      alignItems: 'center',
+      justifyContent: 'center',
     }}>
+      <ActivityIndicator size="large" color={theme.colors.accent} />
+    </View>
+  );
 
-      {/* Header */}
-      <Text style={{
-        fontSize: theme.typography.heading,
-        color: theme.colors.text,
-        marginTop: 20,
-        marginBottom: 24,
-        letterSpacing: 1,
-      }}>
-        My Favorites
-      </Text>
+  return (
+    <ScrollView
+      style={{ flex: 1, backgroundColor: theme.colors.background }}
+      contentContainerStyle={{ padding: theme.spacing.screen, paddingBottom: 40 }}
+    >
 
       {/* Empty state message */}
       {favoriteDuas.length === 0 && (
@@ -99,7 +101,7 @@ export default function FavoritesScreen() {
 
             {/* Remove favorite button */}
             <TouchableOpacity onPress={() => handleRemove(dua.ID)}>
-              <Text style={{ fontSize: 18 }}>❤️</Text>
+              <Text style={{ fontSize: 18 }}>🗑️</Text>
             </TouchableOpacity>
           </View>
 

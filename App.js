@@ -11,7 +11,6 @@ import HomeScreen          from './HomeScreen';
 import DuaScreen           from './DuaScreen';
 import SearchScreen        from './SearchScreen';
 import FavoritesScreen     from './FavoritesScreen';
-import PlaylistScreen      from './PlaylistScreen';
 import PlaylistsScreen     from './PlaylistsScreen';
 import PlaylistDetailScreen from './PlaylistDetailScreen';
 import CounterScreen       from './CounterScreen';
@@ -119,7 +118,6 @@ export default function App() {
         <Stack.Screen name="Search"         component={SearchScreen} />
         <Stack.Screen name="Favorites"      component={FavoritesScreen} />
         <Stack.Screen name="Reminder"       component={RemindersScreen} />
-        <Stack.Screen name="Playlist"       component={PlaylistScreen} />
         <Stack.Screen name="Playlists"      component={PlaylistsScreen} />
         <Stack.Screen name="PlaylistDetail" component={PlaylistDetailScreen} />
         <Stack.Screen

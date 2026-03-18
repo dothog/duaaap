@@ -11,21 +11,22 @@
  *          Navigates to CounterScreen with { playlist: { title, duaIds, datasetTitles } }.
  */
 
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   ScrollView,
+  ActivityIndicator,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { useState } from 'react';
 import { loadPlaylists } from '../data/playlistStorage';
 import { CATEGORIES } from '../data/categories';
 import { theme } from '../theme';
 
 export default function DuaCounterScreen({ navigation }) {
   const [playlists, setPlaylists] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   /**
    * Reload playlists every time the screen comes into focus so that
@@ -34,7 +35,9 @@ export default function DuaCounterScreen({ navigation }) {
    */
   useFocusEffect(
     useCallback(() => {
-      loadPlaylists().then(setPlaylists);
+      loadPlaylists()
+        .then(setPlaylists)
+        .finally(() => setIsLoading(false));
     }, [])
   );
 
@@ -63,6 +66,18 @@ export default function DuaCounterScreen({ navigation }) {
     textTransform: 'uppercase',
     marginBottom: 12,
   };
+
+  // ── Loading guard ────────────────────────────────────────────────
+  if (isLoading) return (
+    <View style={{
+      flex: 1,
+      backgroundColor: theme.colors.background,
+      alignItems: 'center',
+      justifyContent: 'center',
+    }}>
+      <ActivityIndicator size="large" color={theme.colors.accent} />
+    </View>
+  );
 
   // ── Main render ─────────────────────────────────────────────────
   return (
@@ -135,7 +150,7 @@ export default function DuaCounterScreen({ navigation }) {
                 fontFamily: 'Courier New',
                 marginTop: 8,
               }}>
-                {pl.duaIds.length} DUAS
+                {pl.duaIds.length} {pl.duaIds.length === 1 ? 'SECTION' : 'SECTIONS'}
               </Text>
             </TouchableOpacity>
           ))}
@@ -179,7 +194,7 @@ export default function DuaCounterScreen({ navigation }) {
 
             {/* Category name */}
             <Text style={{
-              fontSize: theme.typography.small,
+              fontSize: theme.typography.small + 1,
               color: theme.colors.text,
               textAlign: 'center',
               fontWeight: '500',
@@ -196,7 +211,7 @@ export default function DuaCounterScreen({ navigation }) {
               letterSpacing: 1,
               fontFamily: 'Courier New',
             }}>
-              {cat.duaIds.length} DUAS
+              {cat.duaIds.length} {cat.duaIds.length === 1 ? 'SECTION' : 'SECTIONS'}
             </Text>
 
           </TouchableOpacity>

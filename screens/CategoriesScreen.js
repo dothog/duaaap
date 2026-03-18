@@ -1,14 +1,19 @@
 /**
  * screens/CategoriesScreen.js
  * Purpose: Browse all dua categories in a 2-column grid.
- *          Real-time search bar filters by category name.
- *          Each card shows the emoji, category name, and dua count.
- * Dependencies: React Native, data/categories.js, theme.js
+ *          A pinned "Favorites" card always appears at the top — it is
+ *          always visible regardless of the search query, shows a live
+ *          saved-favorites count, and navigates to FavoritesScreen.
+ *          Real-time search bar filters the 11 category cards by name.
+ *          Each category card shows the emoji, name, and section count.
+ * Dependencies: React Native, @react-navigation/native, data/categories.js,
+ *               favorites.js, theme.js
  * Context: Navigated to from HomeScreen.
  *          Navigates to DuaScreen with { category, duaIds }.
+ *          Navigates to FavoritesScreen.
  */
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -16,15 +21,41 @@ import {
   FlatList,
   TextInput,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { CATEGORIES } from '../data/categories';
+import { getFavorites } from '../favorites';
 import { theme } from '../theme';
+
+/**
+ * FAVORITES_BG — distinct soft-rose background for the pinned Favorites card.
+ * Warm enough to stand out from the regular parchment cards without clashing.
+ */
+const FAVORITES_BG = '#EDD5D5';
 
 export default function CategoriesScreen({ navigation }) {
   const [query, setQuery] = useState('');
 
   /**
+   * favCount — current number of saved favorites.
+   * Loaded fresh every time the screen gains focus so it reflects
+   * additions/removals made on FavoritesScreen or DuaScreen.
+   */
+  const [favCount, setFavCount] = useState(0);
+
+  /**
+   * Reload the favorites count whenever this screen comes into focus.
+   * Like a notice board that updates its number every time you walk past.
+   */
+  useFocusEffect(
+    useCallback(() => {
+      getFavorites().then(ids => setFavCount(ids.length));
+    }, [])
+  );
+
+  /**
    * filteredCategories — live-filtered subset of CATEGORIES.
-   * Empty query shows all. Case-insensitive substring match on name.
+   * Empty query shows all 11. Case-insensitive substring match on name.
+   * The Favorites card is rendered separately and is never filtered out.
    */
   const filteredCategories = query.trim()
     ? CATEGORIES.filter(cat =>
@@ -69,14 +100,70 @@ export default function CategoriesScreen({ navigation }) {
         {item.name}
       </Text>
 
-      {/* Dua count badge */}
+      {/* Section count badge */}
       <Text style={{
         fontSize: 10,
         color: theme.colors.subtle,
         letterSpacing: 1,
         fontFamily: 'Courier New',
       }}>
-        {item.duaIds.length} DUAS
+        {item.duaIds.length} {item.duaIds.length === 1 ? 'SECTION' : 'SECTIONS'}
+      </Text>
+
+    </TouchableOpacity>
+  );
+
+  /**
+   * renderFavoritesCard — pinned full-width card at the top of the list.
+   * Uses ListHeaderComponent so it scrolls with the grid and naturally
+   * spans the full width regardless of numColumns.
+   * Always visible — the search filter only affects the category cards below.
+   */
+  const renderFavoritesCard = () => (
+    <TouchableOpacity
+      onPress={() => navigation.navigate('Favorites')}
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        margin: 6,
+        padding: theme.spacing.card,
+        backgroundColor: FAVORITES_BG,
+        borderRadius: theme.radius.card,
+        borderWidth: 1,
+        borderColor: theme.colors.border,
+        minHeight: 72,
+      }}>
+
+      {/* Emoji */}
+      <Text style={{ fontSize: 30, marginRight: 14 }}>❤️</Text>
+
+      {/* Label + count */}
+      <View style={{ flex: 1 }}>
+        <Text style={{
+          fontSize: theme.typography.small + 1,
+          color: theme.colors.text,
+          fontWeight: '500',
+          marginBottom: 4,
+        }}>
+          Favorites
+        </Text>
+        <Text style={{
+          fontSize: 10,
+          color: theme.colors.subtle,
+          letterSpacing: 1,
+          fontFamily: 'Courier New',
+        }}>
+          {favCount} {favCount === 1 ? 'SAVED' : 'SAVED'}
+        </Text>
+      </View>
+
+      {/* Chevron */}
+      <Text style={{
+        fontSize: 11,
+        color: theme.colors.subtle,
+        marginLeft: 8,
+      }}>
+        ›
       </Text>
 
     </TouchableOpacity>
@@ -91,7 +178,7 @@ export default function CategoriesScreen({ navigation }) {
       paddingTop: theme.spacing.screen,
     }}>
 
-      {/* Search bar */}
+      {/* Search bar — filters category cards only, not the Favorites card */}
       <TextInput
         value={query}
         onChangeText={setQuery}
@@ -110,7 +197,7 @@ export default function CategoriesScreen({ navigation }) {
         }}
       />
 
-      {/* 2-column grid */}
+      {/* 2-column grid with pinned Favorites header */}
       <FlatList
         data={filteredCategories}
         keyExtractor={item => item.id}
@@ -118,6 +205,7 @@ export default function CategoriesScreen({ navigation }) {
         renderItem={renderItem}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 40 }}
+        ListHeaderComponent={renderFavoritesCard}
         ListEmptyComponent={() => (
           <View style={{ alignItems: 'center', marginTop: 40 }}>
             <Text style={{
